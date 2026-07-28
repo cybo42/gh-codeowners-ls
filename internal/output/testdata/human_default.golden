@@ -1,0 +1,10 @@
+Diff: PR #482 "Add billing webhooks"  •  4 files  •  CODEOWNERS @ .github/CODEOWNERS (base: main)
+
+@acme/platform   2 files  ← you
+@acme/default    1 file
+@acme/web        1 file
+
+M	internal/billing/webhook.go	@acme/platform	✓
+A	internal/billing/retry.go	@acme/platform	✓
+M	web/src/Checkout.tsx	@acme/web	
+M	scripts/tmp.sh	@acme/default	

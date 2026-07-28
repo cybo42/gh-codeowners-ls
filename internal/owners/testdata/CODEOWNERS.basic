@@ -1,0 +1,17 @@
+# default owner
+*       @acme/default
+
+# last-match-wins: docs override the default
+docs/   @acme/docs
+
+# directory pattern
+/internal/billing/   @acme/platform @acme/finance
+
+# ** recursion
+src/**/*.go   @acme/go-developers
+
+# a gap with no owner
+scripts/tmp/
+
+# email owner
+*.legal.md   legal@acme.com

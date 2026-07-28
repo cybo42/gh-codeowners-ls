@@ -1,0 +1,119 @@
+{
+  "source": {
+    "kind": "pr",
+    "pr": 482,
+    "base": "main",
+    "head": "feature/billing",
+    "label": "PR #482 \"Add billing webhooks\"",
+    "truncated": false
+  },
+  "identity": {
+    "login": "alice",
+    "teams": [
+      "acme/platform"
+    ],
+    "teamsKnown": true
+  },
+  "codeownersPath": ".github/CODEOWNERS",
+  "files": [
+    {
+      "path": "internal/billing/webhook.go",
+      "status": "M",
+      "additions": 0,
+      "deletions": 0,
+      "owners": [
+        {
+          "value": "acme/platform",
+          "type": "team",
+          "name": "@acme/platform"
+        }
+      ],
+      "rule": {
+        "pattern": "internal/billing/",
+        "lineNumber": 2
+      },
+      "mine": true,
+      "mineVia": "@acme/platform"
+    },
+    {
+      "path": "internal/billing/retry.go",
+      "status": "A",
+      "additions": 0,
+      "deletions": 0,
+      "owners": [
+        {
+          "value": "acme/platform",
+          "type": "team",
+          "name": "@acme/platform"
+        }
+      ],
+      "rule": {
+        "pattern": "internal/billing/",
+        "lineNumber": 2
+      },
+      "mine": true,
+      "mineVia": "@acme/platform"
+    },
+    {
+      "path": "web/src/Checkout.tsx",
+      "status": "M",
+      "additions": 0,
+      "deletions": 0,
+      "owners": [
+        {
+          "value": "acme/web",
+          "type": "team",
+          "name": "@acme/web"
+        }
+      ],
+      "rule": {
+        "pattern": "web/",
+        "lineNumber": 3
+      },
+      "mine": false
+    },
+    {
+      "path": "scripts/tmp.sh",
+      "status": "M",
+      "additions": 0,
+      "deletions": 0,
+      "owners": [
+        {
+          "value": "acme/default",
+          "type": "team",
+          "name": "@acme/default"
+        }
+      ],
+      "rule": {
+        "pattern": "*",
+        "lineNumber": 1
+      },
+      "mine": false
+    }
+  ],
+  "byOwner": [
+    {
+      "owner": "@acme/platform",
+      "mine": true,
+      "files": [
+        "internal/billing/webhook.go",
+        "internal/billing/retry.go"
+      ]
+    },
+    {
+      "owner": "@acme/default",
+      "mine": false,
+      "files": [
+        "scripts/tmp.sh"
+      ]
+    },
+    {
+      "owner": "@acme/web",
+      "mine": false,
+      "files": [
+        "web/src/Checkout.tsx"
+      ]
+    }
+  ],
+  "unowned": []
+}
