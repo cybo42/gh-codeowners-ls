@@ -8,7 +8,7 @@ matching your login **and your GitHub team memberships**.
 
 ```
 $ gh codeowners-ls
-Diff: PR #482 "Add billing webhooks"  •  4 files  •  CODEOWNERS @ .github/CODEOWNERS (base: main)
+acme/api  •  PR #482 "Add billing webhooks"  •  4 files  •  CODEOWNERS @ .github/CODEOWNERS (base: main)
 
 @acme/platform   2 files  ← you
 @acme/web        1 file
@@ -62,7 +62,8 @@ branch's merge-base when there's no PR.
 gh codeowners-ls [<base>...<head>] [flags]
 
 Diff selection
-  --pr <number|url>     use a pull request's file list
+  --pr <number|url>     use a pull request's file list (a URL also selects
+                         the repository — works without a local clone)
   --base <ref>          base ref for a local diff (default: merge-base w/ default branch)
   --head <ref>          head ref for a local diff (default: HEAD)
   --staged              include only staged changes
@@ -108,6 +109,9 @@ gh codeowners-ls --fail-on-unowned
 
 # machine-readable output for scripting
 gh codeowners-ls --json | jq '.files[] | select(.mine)'
+
+# review a PR by URL from anywhere — no local clone needed
+gh codeowners-ls --pr https://github.com/acme/api/pull/482
 ```
 
 ### Missing team memberships?
@@ -164,3 +168,5 @@ when resolving `latest`.
 - For PR sources, CODEOWNERS is read from the PR's **base** ref via the
   contents API — the file GitHub itself evaluates — not the local working
   tree.
+- `--pr <url>` makes the run clone-free: the URL supplies host, owner, and
+  repo, so no git command is needed to resolve them.

@@ -44,6 +44,12 @@ type jsonIdentity struct {
 	Warning    string   `json:"warning,omitempty"`
 }
 
+type jsonRepo struct {
+	Host  string `json:"host"`
+	Owner string `json:"owner"`
+	Name  string `json:"name"`
+}
+
 type jsonSource struct {
 	Kind      string `json:"kind"`
 	PR        int    `json:"pr,omitempty"`
@@ -54,6 +60,7 @@ type jsonSource struct {
 }
 
 type jsonReport struct {
+	Repo           jsonRepo                 `json:"repo"`
 	Source         jsonSource               `json:"source"`
 	Identity       jsonIdentity             `json:"identity"`
 	CodeownersPath string                   `json:"codeownersPath,omitempty"`
@@ -66,6 +73,11 @@ type jsonReport struct {
 // JSON writes report as the --json machine-readable schema.
 func JSON(w io.Writer, report owners.Report) error {
 	out := jsonReport{
+		Repo: jsonRepo{
+			Host:  report.Repo.Host,
+			Owner: report.Repo.Owner,
+			Name:  report.Repo.Name,
+		},
 		Source: jsonSource{
 			Kind:      string(report.Source.Kind),
 			PR:        report.Source.PR,

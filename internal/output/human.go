@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/cli/go-gh/v2/pkg/tableprinter"
 	"github.com/hmarr/codeowners"
 
@@ -57,7 +58,10 @@ func headerLine(report owners.Report) string {
 		codeownersPart = fmt.Sprintf("CODEOWNERS @ %s", report.CodeownersPath)
 	}
 
-	line := fmt.Sprintf("Diff: %s  •  %d %s  •  %s", report.Source.Label, len(report.Files), fileWord, codeownersPart)
+	line := fmt.Sprintf("%s  •  %d %s  •  %s", report.Source.Label, len(report.Files), fileWord, codeownersPart)
+	if repoPart := repoDisplay(report.Repo); repoPart != "" {
+		line = repoPart + "  •  " + line
+	}
 	if report.Source.Base != "" {
 		line += fmt.Sprintf(" (base: %s)", shortRef(report.Source.Base))
 	}
@@ -145,6 +149,16 @@ func ruleDisplay(r *codeowners.Rule) string {
 		return "-"
 	}
 	return fmt.Sprintf("%s (L%d)", r.RawPattern(), r.LineNumber)
+}
+
+func repoDisplay(repo repository.Repository) string {
+	if repo.Owner == "" || repo.Name == "" {
+		return ""
+	}
+	if repo.Host != "" && repo.Host != "github.com" {
+		return fmt.Sprintf("%s/%s/%s", repo.Host, repo.Owner, repo.Name)
+	}
+	return fmt.Sprintf("%s/%s", repo.Owner, repo.Name)
 }
 
 var fullSHARegex = regexp.MustCompile(`^[0-9a-f]{40}$`)

@@ -3,6 +3,7 @@
 package owners
 
 import (
+	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/hmarr/codeowners"
 
 	"github.com/cybo42/gh-codeowners-ls/internal/diff"
@@ -48,6 +49,7 @@ type ValidationError struct {
 // Report is everything needed to render output: the diff, the resolved
 // ownership, and where CODEOWNERS came from.
 type Report struct {
+	Repo           repository.Repository
 	Source         diff.Source
 	Identity       Identity
 	CodeownersPath string // display label for where CODEOWNERS was loaded from
