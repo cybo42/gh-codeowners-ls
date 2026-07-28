@@ -1,0 +1,39 @@
+name: release
+
+# Cut a release by pushing a tag:
+#   git tag -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
+#
+# cli/gh-extension-precompile creates the GitHub release itself (with
+# --generate-notes) and uploads one binary per platform, named
+# dist/{os}-{arch}[.exe] so `gh extension install` can select them. Tags
+# containing a hyphen (e.g. v0.1.0-rc.1) are published as prereleases and are
+# ignored by `gh extension install`, making them safe rehearsals.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write      # create the release, upload assets
+  id-token: write      # sign build provenance attestations
+  attestations: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: cli/gh-extension-precompile@76961aa3bd1123d0a6fd42d0a41aca0696937c39 # v2.2.0
+        with:
+          # Without this the action pins Go 1.18, which cannot build this
+          # module (go.mod requires 1.25).
+          go_version_file: go.mod
+          # Requires a public repo (or GHEC + Advanced Security). Set to false
+          # if the repo is still private when the first tag is pushed.
+          generate_attestations: true
