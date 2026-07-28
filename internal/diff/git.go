@@ -18,6 +18,16 @@ func RepoRoot() (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+// CurrentBranch returns the checked-out branch's name, or "" if HEAD is
+// detached.
+func CurrentBranch() (string, error) {
+	out, err := runGit("branch", "--show-current")
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
 // MergeBase returns the merge-base commit of base and head.
 func MergeBase(base, head string) (string, error) {
 	out, err := runGit("merge-base", base, head)
@@ -28,9 +38,17 @@ func MergeBase(base, head string) (string, error) {
 }
 
 // DefaultBranch resolves the repository's default branch via `gh repo view`,
-// rather than guessing "main".
-func DefaultBranch() (string, error) {
-	stdout, stderr, err := gh.Exec("repo", "view", "--json", "defaultBranchRef", "--jq", ".defaultBranchRef.name")
+// rather than guessing "main". repoSpec, when non-empty, targets a specific
+// "HOST/OWNER/NAME" repo rather than the one inferred from the cwd. Unlike
+// most gh subcommands, `repo view` takes the repo as a positional argument —
+// it has no --repo/-R flag.
+func DefaultBranch(repoSpec string) (string, error) {
+	args := []string{"repo", "view"}
+	if repoSpec != "" {
+		args = append(args, repoSpec)
+	}
+	args = append(args, "--json", "defaultBranchRef", "--jq", ".defaultBranchRef.name")
+	stdout, stderr, err := gh.Exec(args...)
 	if err != nil {
 		return "", fmt.Errorf("resolve default branch: %w: %s", err, strings.TrimSpace(stderr.String()))
 	}

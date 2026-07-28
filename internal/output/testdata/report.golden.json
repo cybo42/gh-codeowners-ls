@@ -1,4 +1,9 @@
 {
+  "repo": {
+    "host": "github.com",
+    "owner": "acme",
+    "name": "api"
+  },
   "source": {
     "kind": "pr",
     "pr": 482,

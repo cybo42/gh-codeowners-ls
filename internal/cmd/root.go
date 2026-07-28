@@ -89,7 +89,7 @@ func newRootCmd(exitCode *int) *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringVar(&o.pr, "pr", "", "use a pull request's file list (number or URL)")
+	flags.StringVar(&o.pr, "pr", "", "use a pull request's file list (number or URL; a URL also selects the repository)")
 	flags.StringVar(&o.base, "base", "", "base ref for a local diff (default: merge-base with default branch)")
 	flags.StringVar(&o.head, "head", "", "head ref for a local diff (default: HEAD)")
 	flags.BoolVar(&o.staged, "staged", false, "include only staged changes")
@@ -116,7 +116,16 @@ func newRootCmd(exitCode *int) *cobra.Command {
 }
 
 func run(cmd *cobra.Command, o options, rangeArg string, exitCode *int) error {
-	repo, err := resolveRepo(o.repo)
+	var prRef diff.PRRef
+	var err error
+	if o.pr != "" {
+		prRef, err = diff.ParsePRRef(o.pr)
+		if err != nil {
+			return err
+		}
+	}
+
+	repo, repoSpec, err := resolveRepo(o.repo, prRef)
 	if err != nil {
 		return err
 	}
@@ -125,7 +134,7 @@ func run(cmd *cobra.Command, o options, rangeArg string, exitCode *int) error {
 	// fixes a CODEOWNERS typo or pushes a new commit expects the next run to
 	// see it immediately. Only identity (login/teams/emails) is cached below
 	// — those change rarely within a review session.
-	client, err := api.NewRESTClient(api.ClientOptions{})
+	client, err := api.NewRESTClient(api.ClientOptions{Host: repo.Host})
 	if err != nil {
 		return fmt.Errorf("build API client: %w", err)
 	}
@@ -133,7 +142,8 @@ func run(cmd *cobra.Command, o options, rangeArg string, exitCode *int) error {
 	src, err := diff.Resolve(diff.ResolveOptions{
 		Repo:               repo,
 		Client:             client,
-		PR:                 o.pr,
+		PRNumber:           prRef.Number,
+		RepoSpec:           repoSpec,
 		Base:               o.base,
 		Head:               o.head,
 		Range:              rangeArg,
@@ -158,7 +168,7 @@ func run(cmd *cobra.Command, o options, rangeArg string, exitCode *int) error {
 		return err
 	}
 
-	identityClient, err := api.NewRESTClient(api.ClientOptions{EnableCache: true, CacheTTL: 3 * time.Minute})
+	identityClient, err := api.NewRESTClient(api.ClientOptions{Host: repo.Host, EnableCache: true, CacheTTL: 3 * time.Minute})
 	if err != nil {
 		return fmt.Errorf("build API client: %w", err)
 	}
@@ -184,6 +194,7 @@ func run(cmd *cobra.Command, o options, rangeArg string, exitCode *int) error {
 	filtered := applyFilters(files, o)
 
 	report := owners.Report{
+		Repo:           repo,
 		Source:         src,
 		Identity:       identity,
 		CodeownersPath: codeownersPath,
@@ -206,11 +217,44 @@ func run(cmd *cobra.Command, o options, rangeArg string, exitCode *int) error {
 	return nil
 }
 
-func resolveRepo(explicit string) (repository.Repository, error) {
+// resolveRepo determines the target repository and, when it was explicitly
+// targeted (via --repo or a --pr URL), a "HOST/OWNER/NAME" spec to forward to
+// gh subprocesses so they don't fall back to resolving the cwd's repo.
+// RepoSpec is deliberately empty when the repo was auto-detected: passing
+// --repo unconditionally to `gh pr view` would defeat its own base-repo
+// resolution for cross-fork PRs.
+func resolveRepo(explicit string, ref diff.PRRef) (repository.Repository, string, error) {
 	if explicit != "" {
-		return repository.Parse(explicit)
+		repo, err := repository.Parse(explicit)
+		if err != nil {
+			return repository.Repository{}, "", err
+		}
+		if ref.HasRepo && !sameRepo(repo, ref.Repo) {
+			return repository.Repository{}, "", fmt.Errorf(
+				"--repo %s conflicts with --pr URL for %s",
+				repoSpecString(repo), repoSpecString(ref.Repo),
+			)
+		}
+		return repo, repoSpecString(repo), nil
 	}
-	return repository.Current()
+
+	if ref.HasRepo {
+		return ref.Repo, repoSpecString(ref.Repo), nil
+	}
+
+	repo, err := repository.Current()
+	if err != nil {
+		return repository.Repository{}, "", fmt.Errorf("%w (use --pr <url> or --repo OWNER/REPO to target a repository without a local clone)", err)
+	}
+	return repo, "", nil
+}
+
+func sameRepo(a, b repository.Repository) bool {
+	return strings.EqualFold(a.Host, b.Host) && strings.EqualFold(a.Owner, b.Owner) && strings.EqualFold(a.Name, b.Name)
+}
+
+func repoSpecString(r repository.Repository) string {
+	return fmt.Sprintf("%s/%s/%s", r.Host, r.Owner, r.Name)
 }
 
 func applyFilters(files []owners.FileOwnership, o options) []owners.FileOwnership {

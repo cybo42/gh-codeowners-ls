@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/hmarr/codeowners"
 
 	"github.com/cybo42/gh-codeowners-ls/internal/diff"
@@ -46,6 +47,7 @@ func sampleReport(t *testing.T) owners.Report {
 	files := owners.Resolve(ruleset, changed, identity)
 
 	return owners.Report{
+		Repo: repository.Repository{Host: "github.com", Owner: "acme", Name: "api"},
 		Source: diff.Source{
 			Kind:  diff.SourcePR,
 			PR:    482,
@@ -107,6 +109,18 @@ func TestHuman_GroupOnly(t *testing.T) {
 		t.Fatalf("Human: %v", err)
 	}
 	compareGolden(t, "human_group.golden", buf.Bytes())
+}
+
+func TestHuman_GHEHost(t *testing.T) {
+	report := sampleReport(t)
+	report.Repo = repository.Repository{Host: "github.example.com", Owner: "acme", Name: "api"}
+	var buf bytes.Buffer
+	if err := Human(&buf, report, HumanOptions{IsTTY: false, Width: 80, ShowGroup: true}); err != nil {
+		t.Fatalf("Human: %v", err)
+	}
+	if !strings.Contains(buf.String(), "github.example.com/acme/api") {
+		t.Errorf("output missing GHE host prefix:\n%s", buf.String())
+	}
 }
 
 func TestJSON(t *testing.T) {

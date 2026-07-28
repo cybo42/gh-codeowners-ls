@@ -3,8 +3,6 @@ package diff
 import (
 	"encoding/json"
 	"fmt"
-	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/cli/go-gh/v2"
@@ -17,10 +15,11 @@ type ResolveOptions struct {
 	Repo   repository.Repository
 	Client *api.RESTClient
 
-	PR    string // number or PR URL; empty if not given
-	Base  string
-	Head  string
-	Range string // "<base>...<head>" positional argument
+	PRNumber int    // 0 if not given
+	RepoSpec string // "HOST/OWNER/NAME"; non-empty only when the repo was explicitly targeted
+	Base     string
+	Head     string
+	Range    string // "<base>...<head>" positional argument
 
 	Staged             bool
 	IncludeUncommitted bool
@@ -31,12 +30,8 @@ type ResolveOptions struct {
 // falling back to a local diff against the default branch's merge-base).
 func Resolve(opts ResolveOptions) (Source, error) {
 	switch {
-	case opts.PR != "":
-		number, err := parsePRNumber(opts.PR)
-		if err != nil {
-			return Source{}, err
-		}
-		return FilesForPR(opts.Client, opts.Repo, number)
+	case opts.PRNumber != 0:
+		return FilesForPR(opts.Client, opts.Repo, opts.PRNumber)
 	case opts.Base != "" || opts.Head != "" || opts.Range != "":
 		return resolveExplicitLocal(opts)
 	default:
@@ -65,7 +60,7 @@ func resolveExplicitLocal(opts ResolveOptions) (Source, error) {
 	}
 
 	if base == "" {
-		def, err := DefaultBranch()
+		def, err := DefaultBranch(opts.RepoSpec)
 		if err != nil {
 			return Source{}, fmt.Errorf("resolve base ref: %w", err)
 		}
@@ -102,7 +97,7 @@ func resolveAuto(opts ResolveOptions) (Source, error) {
 		return src, nil
 	}
 
-	def, err := DefaultBranch()
+	def, err := DefaultBranch(opts.RepoSpec)
 	if err != nil {
 		return Source{}, fmt.Errorf("auto-detect diff source: %w", err)
 	}
@@ -139,7 +134,18 @@ type prView struct {
 // here rather than reimplemented over GraphQL. A non-zero exit (no PR, not a
 // repo, offline) is treated as "no PR found", not an error.
 func detectPR(opts ResolveOptions) (Source, bool, error) {
-	stdout, _, err := gh.Exec("pr", "view", "--json", "number,title,baseRefName")
+	args := []string{"pr", "view", "--json", "number,title,baseRefName"}
+	if opts.RepoSpec != "" {
+		// `pr view`'s -R/--repo requires an explicit PR/branch argument —
+		// without one, gh can't correlate "the current branch" to a repo it
+		// wasn't given the local checkout for.
+		branch, err := CurrentBranch()
+		if err != nil || branch == "" {
+			return Source{}, false, nil
+		}
+		args = append(args, branch, "--repo", opts.RepoSpec)
+	}
+	stdout, _, err := gh.Exec(args...)
 	if err != nil {
 		return Source{}, false, nil
 	}
@@ -154,18 +160,6 @@ func detectPR(opts ResolveOptions) (Source, bool, error) {
 		return Source{}, false, err
 	}
 	return src, true, nil
-}
-
-var prURLRE = regexp.MustCompile(`/pull/(\d+)`)
-
-func parsePRNumber(s string) (int, error) {
-	if n, err := strconv.Atoi(strings.TrimPrefix(s, "#")); err == nil {
-		return n, nil
-	}
-	if m := prURLRE.FindStringSubmatch(s); m != nil {
-		return strconv.Atoi(m[1])
-	}
-	return 0, fmt.Errorf("invalid --pr value %q: expected a number or PR URL", s)
 }
 
 func splitRange(r string) (string, string, error) {
