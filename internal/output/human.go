@@ -4,6 +4,7 @@ package output
 import (
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	"github.com/cli/go-gh/v2/pkg/tableprinter"
@@ -58,7 +59,7 @@ func headerLine(report owners.Report) string {
 
 	line := fmt.Sprintf("Diff: %s  •  %d %s  •  %s", report.Source.Label, len(report.Files), fileWord, codeownersPart)
 	if report.Source.Base != "" {
-		line += fmt.Sprintf(" (base: %s)", report.Source.Base)
+		line += fmt.Sprintf(" (base: %s)", shortRef(report.Source.Base))
 	}
 	if report.Source.Truncated {
 		line += "\n⚠ file list truncated at GitHub's API ceiling — some files may be missing"
@@ -144,4 +145,15 @@ func ruleDisplay(r *codeowners.Rule) string {
 		return "-"
 	}
 	return fmt.Sprintf("%s (L%d)", r.RawPattern(), r.LineNumber)
+}
+
+var fullSHARegex = regexp.MustCompile(`^[0-9a-f]{40}$`)
+
+// shortRef abbreviates a full SHA for display; branch/tag names pass through
+// unchanged.
+func shortRef(ref string) string {
+	if fullSHARegex.MatchString(ref) {
+		return ref[:8]
+	}
+	return ref
 }

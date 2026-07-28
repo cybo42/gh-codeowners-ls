@@ -121,7 +121,11 @@ func run(cmd *cobra.Command, o options, rangeArg string, exitCode *int) error {
 		return err
 	}
 
-	client, err := api.NewRESTClient(api.ClientOptions{EnableCache: true, CacheTTL: 3 * time.Minute})
+	// The diff/CODEOWNERS/validate client stays uncached: a reviewer who
+	// fixes a CODEOWNERS typo or pushes a new commit expects the next run to
+	// see it immediately. Only identity (login/teams/emails) is cached below
+	// — those change rarely within a review session.
+	client, err := api.NewRESTClient(api.ClientOptions{})
 	if err != nil {
 		return fmt.Errorf("build API client: %w", err)
 	}
@@ -154,7 +158,11 @@ func run(cmd *cobra.Command, o options, rangeArg string, exitCode *int) error {
 		return err
 	}
 
-	identity, err := owners.ResolveIdentity(client, repo)
+	identityClient, err := api.NewRESTClient(api.ClientOptions{EnableCache: true, CacheTTL: 3 * time.Minute})
+	if err != nil {
+		return fmt.Errorf("build API client: %w", err)
+	}
+	identity, err := owners.ResolveIdentity(identityClient, repo)
 	if err != nil {
 		return err
 	}

@@ -45,7 +45,7 @@ func LoadRuleset(opts LoadOptions) (codeowners.Ruleset, string, error) {
 	if opts.BaseRef != "" && opts.Client != nil {
 		rs, path, err := loadFromRef(opts.Client, opts.Repo, opts.BaseRef)
 		if err == nil {
-			return rs, fmt.Sprintf("%s @ %s", path, opts.BaseRef), nil
+			return rs, path, nil
 		}
 		fmt.Fprintf(os.Stderr, "codeowners-ls: could not read CODEOWNERS from base ref %s (%v); falling back to working tree\n", opts.BaseRef, err)
 	}
