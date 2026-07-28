@@ -1,6 +1,7 @@
 package owners
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -74,7 +75,8 @@ func ResolveIdentity(client *api.RESTClient, repo repository.Repository) (Identi
 }
 
 func scopeWarning(err error, scope, what string) string {
-	if httpErr, ok := err.(*api.HTTPError); ok && (httpErr.StatusCode == http.StatusForbidden || httpErr.StatusCode == http.StatusNotFound) {
+	var httpErr *api.HTTPError
+	if errors.As(err, &httpErr) && (httpErr.StatusCode == http.StatusForbidden || httpErr.StatusCode == http.StatusNotFound) {
 		return fmt.Sprintf("could not resolve %s (missing %q scope) — run `gh auth refresh -s %s`", what, scope, scope)
 	}
 	return fmt.Sprintf("could not resolve %s: %v", what, err)

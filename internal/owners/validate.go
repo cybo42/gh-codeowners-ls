@@ -1,6 +1,7 @@
 package owners
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -20,7 +21,8 @@ func Validate(client *api.RESTClient, repo repository.Repository, ref string) ([
 	path := fmt.Sprintf("repos/%s/%s/codeowners/errors?ref=%s", repo.Owner, repo.Name, url.QueryEscape(ref))
 	var resp validateResponse
 	if err := client.Get(path, &resp); err != nil {
-		if httpErr, ok := err.(*api.HTTPError); ok && httpErr.StatusCode == http.StatusNotFound {
+		var httpErr *api.HTTPError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("validate CODEOWNERS: %w", err)

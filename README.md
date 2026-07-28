@@ -1,5 +1,7 @@
 # gh-codeowners-ls
 
+[![ci](https://github.com/cybo42/gh-codeowners-ls/actions/workflows/ci.yml/badge.svg)](https://github.com/cybo42/gh-codeowners-ls/actions/workflows/ci.yml)
+
 A [GitHub CLI](https://cli.github.com) extension that maps a diff's changed
 files to their `CODEOWNERS`, and marks exactly which files are yours — by
 matching your login **and your GitHub team memberships**.
@@ -25,7 +27,26 @@ M       scripts/tmp.sh                (unowned)
 gh extension install cybo42/gh-codeowners-ls
 ```
 
-Or, from a checkout of this repo:
+This downloads a precompiled binary for your platform from the latest
+release — no local Go toolchain needed. Keep it up to date with:
+
+```
+gh extension upgrade codeowners-ls
+```
+
+To pin a specific version instead of tracking latest:
+
+```
+gh extension install cybo42/gh-codeowners-ls --pin v0.1.0
+```
+
+Optionally verify the binary's build provenance before running it:
+
+```
+gh attestation verify $(gh extension list --json path -q '.[] | select(.name=="codeowners-ls").path') --owner cybo42
+```
+
+Or, from a checkout of this repo (builds from source):
 
 ```
 make install
@@ -109,9 +130,29 @@ make test     # run unit tests with the race detector
 make check    # fmt, vet, tidy, test, lint — everything CI would run
 make install  # build + install as a local gh extension
 make smoke    # quick sanity check against this repo
+make dist     # cross-compile the full release matrix into dist/
 ```
 
 See `make help` for the full list of targets.
+
+### Releasing
+
+Releases are cut by pushing an annotated tag; `.github/workflows/release.yml`
+(via `cli/gh-extension-precompile`) builds every platform, creates the GitHub
+release, and uploads one binary per platform:
+
+```
+git tag -a v0.1.0 -m "v0.1.0"
+git push origin v0.1.0
+```
+
+Asset names must end in `{os}-{arch}` (`.exe` on Windows) — that's the suffix
+`gh extension install` matches against, so don't rename them.
+
+To rehearse a release without affecting the `install`/`upgrade` path, push a
+tag with a hyphen, e.g. `v0.1.0-rc.1` — GitHub (and therefore `gh`) treats
+any tag containing `-` as a prerelease, which `gh extension install` ignores
+when resolving `latest`.
 
 ## Design
 

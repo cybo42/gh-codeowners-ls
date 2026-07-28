@@ -1,0 +1,80 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # windows-latest is intentionally excluded: internal/diff/git_test.go
+        # compares `git rev-parse --show-toplevel` output (forward slashes)
+        # against filepath paths (backslashes on Windows). Windows is covered
+        # build-only by the cross-compile job below.
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: test (race)
+        run: make test
+      - name: smoke (binary starts)
+        run: |
+          make build
+          ./gh-codeowners-ls --help
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: make fmt
+      - name: go vet
+        run: make vet
+      - name: go.mod tidy
+        run: make tidy
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.12.2
+
+  cross:
+    name: cross-compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      # Mirrors the platforms cli/gh-extension-precompile builds at release
+      # time, so a broken GOOS shows up on the PR, not on the tag.
+      - name: build all release platforms
+        run: make dist
+      - name: assert gh-installable asset names
+        run: |
+          set -euo pipefail
+          ls -l dist/
+          for suffix in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64.exe; do
+            compgen -G "dist/*${suffix}" >/dev/null \
+              || { echo "no dist asset ending in ${suffix}"; exit 1; }
+          done
